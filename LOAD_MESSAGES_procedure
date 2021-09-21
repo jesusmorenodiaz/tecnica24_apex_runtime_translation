@@ -1,0 +1,68 @@
+CREATE OR REPLACE PROCEDURE LOAD_MESSAGES( P_LANG IN VARCHAR2 )
+IS
+   V_PREFS VARCHAR2(4000);
+   V_CRLF VARCHAR2(20) DEFAULT CHR(13)||CHR(10);
+   V_ITEM VARCHAR2(4000);
+   V_VALUE VARCHAR2(4000);
+   
+   -- EXTRACT AN ITEM FROM STRING
+   FUNCTION "THIS_GET_ITEM_NUM" (
+     P_STRING IN VARCHAR2
+   , P_ITEM IN NUMBER
+   , P_SEPARATOR IN VARCHAR2 DEFAULT ','
+   ) RETURN VARCHAR2 AS
+   V_RETURN VARCHAR2(4000);
+   V_ITEM NUMBER(12,0);
+   V_POS NUMBER(12,0);
+   V_STRING VARCHAR2(4000);
+   BEGIN
+      IF P_ITEM <= 0 THEN
+         RETURN NULL;
+      END IF;
+      V_STRING := P_STRING || P_SEPARATOR;
+      V_ITEM := 0;
+      LOOP
+         V_ITEM := V_ITEM + 1;
+         V_POS := INSTR( V_STRING, P_SEPARATOR );
+         V_RETURN := SUBSTR( V_STRING, 1, V_POS - 1 );
+         V_STRING := SUBSTR( V_STRING, V_POS + 1 );
+      EXIT WHEN ( V_ITEM = P_ITEM OR V_POS = 0 );
+      END LOOP;
+      RETURN V_RETURN;
+   END;
+
+BEGIN
+
+   -- @jesusmoreno
+   -- TECNICA24
+   -- http://www.tecnica24.es
+   
+   -- GET PREFS: modify this code to get your prefs
+   SELECT PREFERENCES INTO V_PREFS FROM (
+      SELECT 1 ORDER_BY, PREFERENCES
+      FROM T_RUNTIMES
+      WHERE ID = V('P0_RUNTIME')
+   ) WHERE ROWNUM = 1;
+
+   -- PROCESS PREFERENCES
+   FOR C_DAT IN ( SELECT COLUMN_VALUE FROM TABLE( APEX_STRING.SPLIT( V_PREFS, V_CRLF ) ) )
+   LOOP
+      -- SET MESSAGE: we load only messages from LANGUAGE passed in
+      IF C_DAT.COLUMN_VALUE LIKE 'TX_%_'||P_LANG THEN
+         -- GET ITEM VALUE
+         V_ITEM := THIS_GET_ITEM_NUM( C_DAT.COLUMN_VALUE, 1, '=' );
+         V_VALUE := THIS_GET_ITEM_NUM( C_DAT.COLUMN_VALUE, 2, '=' );
+         -- CREATE ITEM: lets create an application item to store label/message used in application
+         BEGIN
+            WWV_FLOW_API.CREATE_FLOW_ITEM( P_NAME=>V_ITEM, P_PROTECTION_LEVEL=>'I' );
+         EXCEPTION
+            WHEN OTHERS THEN
+               NULL;
+         END;
+         -- ASSIGN VALUE
+         APEX_UTIL.SET_SESSION_STATE( V_ITEM, V_VALUE );
+      END IF;
+
+   END LOOP;
+
+END;
