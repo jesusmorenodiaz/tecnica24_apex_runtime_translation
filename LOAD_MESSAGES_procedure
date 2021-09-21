@@ -1,5 +1,15 @@
 CREATE OR REPLACE PROCEDURE LOAD_MESSAGES( P_LANG IN VARCHAR2 )
 IS
+
+   -- @jesusmoreno
+   -- TECNICA24
+   -- http://www.tecnica24.es
+   
+   -- set this procedure in a APPLICATION PROCESS "on new instance", prior to LOGIN, to load messages/labels into "created on the fly" APEX items
+   -- named with TX_* or similar. Choose prefix on your own.
+   -- do not forget call it passing in your prefered language that is a subfix for all your messages.
+   -- you can use in any label, title region, statics, etc.., something like &TX_YOUR_LABEL. (starting with '&' and ending with '.')
+   
    V_PREFS VARCHAR2(4000);
    V_CRLF VARCHAR2(20) DEFAULT CHR(13)||CHR(10);
    V_ITEM VARCHAR2(4000);
@@ -32,10 +42,6 @@ IS
    END;
 
 BEGIN
-
-   -- @jesusmoreno
-   -- TECNICA24
-   -- http://www.tecnica24.es
    
    -- GET PREFS: modify this code to get your prefs
    SELECT PREFERENCES INTO V_PREFS FROM (
@@ -49,8 +55,8 @@ BEGIN
    LOOP
       -- SET MESSAGE: we load only messages from LANGUAGE passed in
       IF C_DAT.COLUMN_VALUE LIKE 'TX_%_'||P_LANG THEN
-         -- GET ITEM VALUE
-         V_ITEM := THIS_GET_ITEM_NUM( C_DAT.COLUMN_VALUE, 1, '=' );
+         -- GET ITEM VALUE REMOVING LANG
+         V_ITEM := REPLACE( THIS_GET_ITEM_NUM( C_DAT.COLUMN_VALUE, 1, '=' ), '_'||P_LANG, '' );
          V_VALUE := THIS_GET_ITEM_NUM( C_DAT.COLUMN_VALUE, 2, '=' );
          -- CREATE ITEM: lets create an application item to store label/message used in application
          BEGIN
